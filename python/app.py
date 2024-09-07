@@ -4,7 +4,7 @@ import streamlit as st
 from cloudflare import Cloudflare
 
 
-recipes_df = pd.read_csv("/Users/irisyu/Desktop/Project/ai-magic-recipe-generator/data/magic_recipes.csv")
+recipes_df = pd.read_csv("/Users/irisyu/desktop/project/ai-magic-recipe-generator/useless-hack/Tim-Useless-Fun-Hacky/python/.streamlit/magic_recipes.csv")
 
 st.title("Harry Potter AI Magic Recipe Generator")
 

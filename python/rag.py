@@ -2,9 +2,9 @@ import json
 import pandas as pd
 import streamlit as st
 from cloudflare import Cloudflare
-from haystack import Finder
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.nodes.retriever import BM25Retriever
+from haystack.document_stores.faiss import FAISSDocumentStore  # 替代 InMemoryDocumentStore
+from haystack.nodes import BM25Retriever
+from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 
 # 加载魔法食谱数据集
@@ -32,22 +32,22 @@ def df_to_haystack_docs(df):
         docs.append(Document(content=content, meta={"name": title}))
     return docs
 
-# 初始化 Haystack 的 InMemoryDocumentStore
-document_store = InMemoryDocumentStore()
+# 初始化 FAISSDocumentStore 作为替代的内存文档存储
+document_store = FAISSDocumentStore(embedding_dim=768)  # FAISS 要求定义 embedding 维度
 docs = df_to_haystack_docs(recipes_df)
 document_store.write_documents(docs)
 
 # 初始化 BM25Retriever
 retriever = BM25Retriever(document_store=document_store)
 
-# 初始化 Finder
-finder = Finder(retriever=retriever)
+# 使用 DocumentSearchPipeline 进行检索
+search_pipeline = DocumentSearchPipeline(retriever)
 
 # 函数：查找参考食谱
-def find_reference_recipes_haystack(user_input, finder):
+def find_reference_recipes_haystack(user_input, search_pipeline):
     # 使用 Haystack 检索相关文档
-    retrieved_docs = finder.retrieve(query=user_input, top_k=3)  # 返回 3 个相关食谱
-    return retrieved_docs
+    result = search_pipeline.run(query=user_input, params={"Retriever": {"top_k": 3}})
+    return result['documents']
 
 # 函数：处理 AI 生成的流式输出
 def iter_tokens(response):
@@ -66,7 +66,7 @@ if prompt := st.chat_input("Please enter the type of magic recipe you want to ge
         st.markdown(prompt)
 
     # 使用 Haystack 检索相关参考食谱
-    retrieved_docs = find_reference_recipes_haystack(prompt, finder)
+    retrieved_docs = find_reference_recipes_haystack(prompt, search_pipeline)
 
     if retrieved_docs:
         reference_text = "\n\n".join([doc.content for doc in retrieved_docs])
